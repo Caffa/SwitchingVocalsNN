@@ -1,4 +1,6 @@
 from __future__ import unicode_literals
+
+import shutil
 import youtube_dl
 import os
 from pathlib import Path
@@ -12,11 +14,11 @@ from string import punctuation
 import youtube_dl
 
 def flatten(A):
-    rt = []
-    for i in A:
-        if isinstance(i,list): rt.extend(flatten(i))
-        else: rt.append(i)
-    return rt
+	rt = []
+	for i in A:
+		if isinstance(i,list): rt.extend(flatten(i))
+		else: rt.append(i)
+	return rt
 
 
 def nameSplitter(SVName, verbose = False):
@@ -81,16 +83,16 @@ def youtubeSongName(oneSongName):
 		# "download_archive": "alreadyListedFiles.txt", #File name of a file where all downloads are recorded. Videos already present in the file are not downloaded     again.
 		"default_search": "ytsearch: lyrics ", #Prepend this string if an input url is not valid. 'auto' for elaborate guessing'
 		'format': 'bestaudio/best',
-	    'postprocessors': [{
-	        'key': 'FFmpegExtractAudio',
-	        'preferredcodec': 'wav',
-	        'preferredquality': '192'
-	    }],
-	    'postprocessor_args': [
-	        '-ar', '16000'
-	    ],
-	    'prefer_ffmpeg': True,
-	    'keepvideo': True
+		'postprocessors': [{
+			'key': 'FFmpegExtractAudio',
+			'preferredcodec': 'wav',
+			'preferredquality': '192'
+		}],
+		'postprocessor_args': [
+		'-ar', '16000'
+		],
+		'prefer_ffmpeg': True,
+		'keepvideo': True
 		}
 	with youtube_dl.YoutubeDL(ydl_opts) as ydl:
 		ydl.add_default_info_extractors()
@@ -168,6 +170,9 @@ def properSongNames(listOfPossibleSongs):
 			songNamesList.append(title)
 			alreadyFoundTerms.extend(alreadyFoundTerms)
 
+	return songNamesList
+
+
 	# return songNamesList
 
 
@@ -187,9 +192,10 @@ def DownloadASong(SongName):
 	""" Get the list of results from queries and put it in a json file"""
 	rootdir = str(Path().absolute())
 	ydl_opts = {
+		"quiet": True,
 		"outtmpl": os.path.join(rootdir, "Original_%(title)s.%(ext)s"), #"%(title)s.%(ext)s",
 		"ignoreerrors": True, #Do not stop on download errors.
-		"nooverwrites": True, #Prevent overwriting files.
+		"nooverwrites": False, #Prevent overwriting files.
 		"writedescription": True, #Write the video description to a .description file
 		"min_views": 100, #only get videos with min 10k views
 		# "download_archive": "alreadyListedFiles.txt", #File name of a file where all downloads are recorded. Videos already present in the file are not downloaded     again.
@@ -290,48 +296,150 @@ def processDownloads():
 				DownloadASong(i) #TODO verify this is in correct folder
 			#rename to Originals and SV (kinda already done - orignals have appended titles coz)
 
+def writeToErrorFile(message):
+	global originalRootDir
+	myPath = os.path.join(originalRootDir + "Error_Verify.txt")
+	text_file = open(myPath, "w")
+	n = text_file.write(message)
+	text_file.close()
+	return
+
+def writeToWarningFile(message):
+	global originalRootDir
+	myPath = os.path.join(originalRootDir + "Warning_Verify.txt")
+	text_file = open(myPath, "w")
+	n = text_file.write(message)
+	text_file.close()
+	return
 
 
 
-def test():
-	"""Test by processing downloaded sv & downloading original"""
-	# processDownloads()
-	testCaseProb = "「Nightcore」→  Faded ✗Running With The Wolves (Switching Vocals)"
-	testCaseProbB = "「Nightcore」→  Faded _ Running With The Wolves (Switching Vocals)"
-	testCaseNorm = "Nightcore ⟿ These Girls [Switching Vocals]"
-	testCaseNormB = "Nightcore ⇢ Rockabye (Switching Vocals)"
-	testCaseNormC = "❖ Nightcore ❖ ⟿ Come to Brazil [Switching Vocals]"
-	testCaseProbC = "Nightcore ⇢ Solo (Switching Vocals) By Halocene" 
-	tests = [testCaseProb, testCaseProbB, testCaseNorm, testCaseNormB, testCaseNormC, testCaseProbC]
-	correctAns = [str(['Faded', 'Running with the Wolves']), str(['Faded', 'Running with the Wolves']),
-	str(["Why Don't We- These Girls (lyrics)"]), 
-	str(['Rockabye (feat. Sean Paul & Anne-Marie)']), 
-	str(['Come to Brazil']),
-	str(['Solo (feat. Demi Lovato)'])
-	]
-	results = []
-	for i in range(len(tests)):
-		ans = str(processSongNames(tests[i]))
-		results.append(ans)
-		print("#")
+def countOriginals(subfolderPath):
+	"""return count of original vids"""
+	items = os.listdir(subfolderPath)
+	count = 0
+	for file in items:
+		if file.startswith("Original_") and file.endswith(".description"):
+			count = count + 1
+	return count
 
-	print("\n")
-	for i in range(len(results)):
-		if results[i] == correctAns[i]:
-			print("CORRECT :D \n")
+def checkMissingSongs(subfolderPath):
+	filePath = os.path.join(subfolderPath,'songsInfo.json' )
+	with open(filePath, 'r') as fp:
+		data = json.load(fp)
+	#check number of original songs
+	countOriginalsDownloaded = countOriginals(subfolderPath)
+
+	if len(data["Original Song Names"]) != countOriginalsDownloaded:
+		if len(data["Original Song Names"]) > countOriginalsDownloaded:
+			print("Missing Songs! for " + data["Switch Vocals Vid"])
+			return 2
 		else:
-			print("WRONG! \nFor test case: " + tests[i])
-			print("Answer produced: " + results[i])
-			print("Correct Answer: " + correctAns[i])
-			print("\n")
-			print("###### VERBOSE #######")
-			processSongNamesVerbose(tests[i])
-			
-	# processSongNames(testCase)
-	
+			#too many original songs downloaded
+			print("###### Possible Error ####### Too many originals for: " + data["Switch Vocals Vid"])
+			return 1
+	else:
+		return 0
+
+def whichSongsAreMissing(subfolderPath):
+	"""returns query names of missing songs"""
+	filePath = os.path.join(subfolderPath,'songsInfo.json' )
+	with open(filePath, 'r') as fp:
+		data = json.load(fp)
+	items = os.listdir(subfolderPath)
+	allSongNames = data["Original Song Names"]
+	included = []
+	for file in items:
+		if file.startswith("Original_") and file.endswith(".description"):
+			fileName = os.path.basename(file)
+			songName = fileName[9:-12]
+			# print(songName)
+			# name, terms = youtubeSongName(songName)
+			included.append(songName)
+			# print(included)
+			# flatten(included)
+	missingSongs = list(set(allSongNames)^set(included))
+	return missingSongs
+
+def FixMissingDownloads():
+	"""check if folder has correct number of originals"""
+	##### Process
+	#for each song
+	global originalRootDir
+	originalRootDir = str(Path().absolute()) 
+
+	rootdir = str(Path().absolute()) 
+	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
+
+	for subfolderName in subfolders:
+		# go into that folder
+		os.chdir(subfolderName)
+		#find the originals needed from info json
+		problem = checkMissingSongs(subfolderName)
+		if(problem != 0):
+			#something is wrong
+			if problem == 1:
+				#too many originals
+				writeToErrorFile("Too Many Songs: " + str(subfolderName))
+				#move to problematicSongVid
+				shutil.move(subfolderName, "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/TooMany")
+				problem = 0 # to break out
+
+			if problem == 2:
+				#too little originals
+				missingSongs = whichSongsAreMissing(subfolderName)
+				for SongName in missingSongs:
+					DownloadASong(SongName)
+				problem = checkMissingSongs(subfolderName)
+
+		if problem != 0:
+			#too little originals cannot be downloaded
+			writeToErrorFile("Too little songs (download problem): " + str(subfolderName))
+			#move to problematicSongVid
+			dest = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/TooLittle(DownloadProb)"
+			shutil.move(subfolderName, dest)
+
+
+def removeFoldersWithNoOriginals():
+	global originalRootDir
+	originalRootDir = str(Path().absolute()) 
+
+	rootdir = str(Path().absolute()) 
+	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
+
+	for subfolderName in subfolders:
+		if countOriginals(subfolderName) == 0:
+			writeToErrorFile("No downloaded original : " + str(subfolderName))
+			dest = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/No_Originals"
+			shutil.move(subfolderName, dest)
+
+import librosa
+def possiblyTooLong():
+	global originalRootDir
+	originalRootDir = str(Path().absolute()) 
+
+	rootdir = str(Path().absolute()) 
+	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
+
+	for subfolderName in subfolders:
+		allFiles = os.listdir(subfolderPath)
+		for file in allFiles:
+			if file.endswith(".wav"):
+				#check if song is too long
+				songLength = librosa.get_duration(file)
+				if songLength > 500:
+					writeToWarningFile("Song Might be too long : " + str(subfolderName))
+					dest = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/WrongSong"
+					shutil.move(subfolderName, dest)
+
+		return count
+		
 
 def run():
-	processDownloads()
+	FixMissingDownloads()
+	removeFoldersWithNoOriginals()
+	possiblyTooLong()
+	#TODO test for similarity of song
 	
 	##### Process
 	#put in folder for each song
