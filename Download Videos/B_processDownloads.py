@@ -75,11 +75,16 @@ def offlineAlterInfoDict():
 	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
 
 	for subfolderPath in subfolders:
+		os.chdir(os.path.join(rootdir, subfolderPath))
 		filePath = os.path.join(subfolderPath,'songsInfo.json' )
 		with open(filePath, 'r') as fp:
 			data = json.load(fp)
 
-		removedDupes = list(dict.fromkeys(data["Original Song Names"]))
+		past = data["Original Song Names"]
+		removedDupes = list(dict.fromkeys(past))
+		if past != removedDupes:
+			print(past)
+			print(removedDupes)
 		data["Original Song Names"] = removedDupes
 
 		with open('songsInfo.json', 'w') as fp:
@@ -402,7 +407,7 @@ def test():
 
 def run():
 	processDownloads()
-	offlineAlterInfoDict()
+	
 	
 	##### Process
 	#put in folder for each song
@@ -415,6 +420,7 @@ def run():
 
 if __name__ == "__main__":
     run()
+    # offlineAlterInfoDict()
     # alterInfoDict()
     
     

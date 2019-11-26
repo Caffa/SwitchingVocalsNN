@@ -71,13 +71,13 @@ def nameSplitter(SVName, verbose = False):
 def youtubeSongName(oneSongName):
 	"""check on youtube and get the title of the actual song name"""
 	ydl_opts = {
-		# "quiet": True,
+		"quiet": True,
 		# "outtmpl": "%(title)s.%(ext)s", #file name is song name
 		# "outtmpl": os.path.join(rootdir,"%(title)s/SV.%(ext)s"), #folder name is song name, file is SV
 		"ignoreerrors": True, #Do not stop on download errors.
 		"nooverwrites": True, #Prevent overwriting files.
 		"matchtitle": oneSongName, #not sure if this works (Download only matching titles)
-		"reject-title": r"(Switching Vocals|Mashups)",		# "writedescription": True, #Write the video description to a .description file
+		"reject-title": r"(Switching Vocals|Mashups|Official|Karaoke|Extended|Remix)",		# "writedescription": True, #Write the video description to a .description file
 		"skip_download": True, #don't actually download the video
 		"min_views": 100, #only get videos with min 10k views
 		# "download_archive": "alreadyListedFiles.txt", #File name of a file where all downloads are recorded. Videos already present in the file are not downloaded     again.
@@ -170,7 +170,7 @@ def properSongNames(listOfPossibleSongs):
 			songNamesList.append(title)
 			alreadyFoundTerms.extend(alreadyFoundTerms)
 
-	return songNamesList
+	# return songNamesList
 
 
 	# return songNamesList
@@ -260,7 +260,7 @@ def processDownloads():
 
 	for subfolderName in subfolders:
 		# delete if mashup is a lot of songs ("AND MORE") else process it
-		if "and more" in subfolderName.lower():
+		if "and more" in subfolderName.lower() or "mega" in subfolderName.lower() or " hour" in subfolderName.lower():
 			#TODO delete that folder
 			os.removedirs(os.path.join(rootdir, subfolderName))
 
@@ -372,8 +372,9 @@ def FixMissingDownloads():
 	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
 
 	for subfolderName in subfolders:
+		moveTODO = False
 		# go into that folder
-		# os.chdir(subfolderName)
+		os.chdir(subfolderName)
 		#find the originals needed from info json
 		problem = checkMissingSongs(subfolderName)
 		if(problem != 0):
@@ -382,7 +383,8 @@ def FixMissingDownloads():
 				#too many originals
 				writeToErrorFile("Too Many Songs: " + str(subfolderName))
 				#move to problematicSongVid
-				shutil.move(subfolderName, "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/TooMany")
+				moveTODO = True
+				folderToMove = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/TooMany"
 				problem = 0 # to break out
 
 			if problem == 2:
@@ -396,8 +398,11 @@ def FixMissingDownloads():
 			#too little originals cannot be downloaded
 			writeToErrorFile("Too little songs (download problem): " + str(subfolderName))
 			#move to problematicSongVid
-			dest = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/TooLittle(DownloadProb)"
-			shutil.move(subfolderName, dest)
+			moveTODO = True
+			folderToMove = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/TooLittle(DownloadProb)"
+			
+		if moveTODO:
+			shutil.move(subfolderName, folderToMove)
 	return 
 
 
@@ -440,9 +445,88 @@ def possiblyTooLong():
 					shutil.move(subfolderName, dest)
 					break;
 	return 
-		
+
+def offlineAlterInfoDict():
+	global originalRootDir
+	originalRootDir = str(Path().absolute()) 
+
+	rootdir = str(Path().absolute()) 
+	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
+
+	for subfolderPath in subfolders:
+		os.chdir(os.path.join(rootdir, subfolderPath))
+		filePath = os.path.join(subfolderPath,'songsInfo.json' )
+		with open(filePath, 'r') as fp:
+			data = json.load(fp)
+
+		past = data["Original Song Names"]
+		removedDupes = list(dict.fromkeys(past))
+		if past != removedDupes:
+			print(past)
+			print(removedDupes)
+		data["Original Song Names"] = removedDupes
+
+		with open('songsInfo.json', 'w') as fp:
+			json.dump(data, fp, sort_keys=True, indent=4)
+
+def alterInfoDict():
+	#for each song
+	rootdir = str(Path().absolute()) 
+	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
+
+
+	for subfolderName in subfolders:
+		# delete if mashup is a lot of songs ("AND MORE") else process it
+		if " more" in subfolderName.lower() or "top" in subfolderName.lower():
+			#TODO delete that folder
+			shutil.rmtree(os.path.join(rootdir, subfolderName))
+
+		else:
+			#go into that folder
+			os.chdir(os.path.join(rootdir, subfolderName))
+			#find the original song name
+			songName = os.path.basename(subfolderName)
+			originalSongNames = list(dict.fromkeys(processSongNames(songName)))
+
+			# lookedUpSongName = 
+
+			filePath = os.path.join(subfolderName,'songsInfo.json' )
+			with open(filePath, 'r') as fp:
+				data = json.load(fp)
+
+			past = data["Original Song Names"]
+
+			if past != originalSongNames:
+				print("Mistake Found!")
+				print(past)
+				print(originalSongNames)
+
+			#TODO save the name of the song to a file in the folder ALONG with SV name
+			mashupVid = False
+			if len(originalSongNames) > 1 or "mashup" in songName.lower():
+				mashupVid = True
+
+			PossibleError = False
+			if "mashup" in songName.lower() and len(originalSongNames) < 2:
+				print("Error: possibly missing song for " + songName)
+				PossibleError = True
+
+			info_dict = {
+			"Switch Vocals Vid": songName,
+			"Original Song Names": originalSongNames,
+			"Mashup": mashupVid,
+			"Error(if MashUp)": PossibleError
+			}
+
+			with open('songsInfo.json', 'w') as fp:
+			    json.dump(info_dict, fp, sort_keys=True, indent=4)
+	
+
 
 def run():
+	alterInfoDict()
+	offlineAlterInfoDict()
+
 	FixMissingDownloads()
 	# print("Done")
 	removeFoldersWithNoOriginals()
