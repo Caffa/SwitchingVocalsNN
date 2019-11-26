@@ -3,6 +3,7 @@ from musicnn.tagger import top_tags
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import json
 from pathlib import Path
 
 def plotOutDiagrams(songPath, modelUsed, subfolderName = False, show = False):
