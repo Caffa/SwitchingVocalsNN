@@ -5,14 +5,21 @@ import matplotlib.pyplot as plt
 import os
 from pathlib import Path
 
-def plotOutDiagrams(songPath, show = False):
-	global modelUsed
+def plotOutDiagrams(songPath, modelUsed, subfolderName = False, show = False):
+	# print("The Path is " + songPath)
 	taggram, tags, somethingElse = extractor(songPath, model=modelUsed)
+
 	
-	if "SV.wav" in songPath:
-		songName = "SV_" + str(os.path.basename(os.path.dirname(songPath)))
+	if "SV.wav" == songPath and subfolderName:
+		# songName = "SV_" + os.path.basename(os.path.dirname(songPath))
+		# print("SubfolderName: " + subfolderName)
+		# print("DirName: " + os.path.dirname(subfolderName))
+		# print("BaseName: " + os.path.basename(subfolderName))
+		songName = "SV_" + os.path.basename(subfolderName)
 	else:
 		songName = os.path.basename(songPath)[:-4]
+
+	# print("The song name is " + songName)
 
 	in_length = 3 # seconds  by default, the model takes inputs of 3 seconds with no overlap
 
@@ -45,7 +52,7 @@ def plotOutDiagrams(songPath, show = False):
 	if show:
 		plt.show()
 
-	plt.savefig("Taggram " + songName + ".png")
+	plt.savefig("Taggram " + songName + " _ " + modelUsed + ".png")
 
 
 	####
@@ -193,20 +200,20 @@ def plotSeveralDiagrams(taggram, tags, diagramType, songPathL):
 
 	
 
-def MultipleSongs(songList):
+def MultipleSongs(songList, modelUsed):
 	taggramL = []
 	tagsL = []
 	for i in songList:
-		taggrams, tags = plotOutDiagrams(i)
+		taggrams, tags = plotOutDiagrams(i, modelUsed)
 		taggramL.append(taggrams)
 		tagsL.append(tags)
 
 	plotSeveralDiagrams(taggramL, tagsL, "Taggram", songList)
 	plotSeveralDiagrams(taggramL, tagsL, "Tags", songList)
 
-def ProcessAll(modelToUse):
-	global modelUsed
-	modelUsed = modelToUse
+def ProcessAll(modelUsed):
+	# global modelUsed
+	# modelUsed = modelToUse
 
 	rootdir = str(Path().absolute()) 
 	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
@@ -219,12 +226,12 @@ def ProcessAll(modelToUse):
 		items = os.listdir(currentDirectory)
 		for file in items:
 			if file.endswith(".wav"):
-				plotOutDiagrams(file)
+				plotOutDiagrams(file, modelUsed, currentDirectory)
 				# matplotlib.close('all')
 		print("Done with " + songName)
 
 def test():
-	global modelUsed
+	# global modelUsed
 	modelUsed = "MTT_musicnn" # modelUsed = "MSD_musicnn"
 	songPathOrig = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/SongVids/「Nightcore」→ Love Yourself ( Switching Vocals )/Original_Justin Bieber - Love Yourself (Official Video).wav"
 	songPathSV = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/SongVids/「Nightcore」→ Love Yourself ( Switching Vocals )/SV.wav"
@@ -233,7 +240,7 @@ def test():
 	songPathNewOrig = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/SongVids/Nightcore _ Maps (Switching Vocals)/Original_Maroon 5 - Maps (Lyric Video).wav"
 	songPathNewSV = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/SongVids/Nightcore _ Maps (Switching Vocals)/SV.wav"
 	songList = [songPathOrig, songPathSV, songPathNewOrig, songPathNewSV]
-	MultipleSongs(songList)
+	MultipleSongs(songList, modelUsed)
 
 def run():
 	ProcessAll("MTT_musicnn")
