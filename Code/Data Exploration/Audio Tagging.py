@@ -6,6 +6,12 @@ import os
 import json
 from pathlib import Path
 
+def fixName(SVName):
+	SVName = SVName.replace("✗", " _ ")
+	SVName = unidecode(SVName) #better coz it brings to the closest equivalent
+	SVName = SVName.rstrip(punctuation + " ")
+	return SVName
+
 def plotOutDiagrams(songPath, modelUsed, subfolderName = False, show = False):
 	# print("The Path is " + songPath)
 	taggram, tags, somethingElse = extractor(songPath, model=modelUsed)
@@ -16,7 +22,7 @@ def plotOutDiagrams(songPath, modelUsed, subfolderName = False, show = False):
 		# print("SubfolderName: " + subfolderName)
 		# print("DirName: " + os.path.dirname(subfolderName))
 		# print("BaseName: " + os.path.basename(subfolderName))
-		songName = "SV_" + os.path.basename(subfolderName)
+		songName = "SV_" + fixName(os.path.basename(subfolderName))
 	else:
 		songName = os.path.basename(songPath)[:-4]
 
@@ -253,7 +259,7 @@ def ProcessAll(modelUsed):
 					songName = "SV_" + os.path.basename(currentDirectory)
 				else:
 					songName = os.path.basename(file)[:-4]
-				jsonName = songName + ".json"
+				jsonName = fixName(songName) + ".json"
 				with open(jsonName, 'w') as fp:
 				    # json.dump(data, fp)
 				    json.dump(info_dict, fp, sort_keys=True, indent=4, cls=NumpyEncoder)
