@@ -226,8 +226,23 @@ def ProcessAll(modelUsed):
 		items = os.listdir(currentDirectory)
 		for file in items:
 			if file.endswith(".wav"):
-				plotOutDiagrams(file, modelUsed, currentDirectory)
+				taggrams, tags = plotOutDiagrams(file, modelUsed, currentDirectory)
 				# matplotlib.close('all')
+				info_dict = {
+				"taggrams" : taggrams, 
+				"tags" : tags
+				}
+
+				if "SV.wav" == file:
+					songName = "SV_" + os.path.basename(currentDirectory)
+				else:
+					songName = os.path.basename(file)[:-4]
+				jsonName = songName + ".json"
+				with open(jsonName, 'w') as fp:
+				    # json.dump(data, fp)
+				    json.dump(info_dict, fp, sort_keys=True, indent=4)
+
+
 		print("Done with " + songName)
 
 def test():
