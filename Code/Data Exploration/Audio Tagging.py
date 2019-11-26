@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import os
 import json
 from pathlib import Path
+from unidecode import unidecode
+
 
 def fixName(SVName):
 	SVName = SVName.replace("✗", " _ ")
