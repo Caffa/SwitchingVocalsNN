@@ -1,5 +1,6 @@
 import A_downloadVids
 import B_processDownloads
+import C_FixMissedDownloads
 
 
 def run():
@@ -18,6 +19,10 @@ def run():
 	]
 	A_downloadVids.downloadChannels(channelList)
 	B_processDownloads.processDownloads()
+
+	C_FixMissedDownloads.FixMissingDownloads()
+	C_FixMissedDownloads.removeFoldersWithNoOriginals()
+	C_FixMissedDownloads.possiblyTooLong()
 
 
 if __name__ == "__main__":

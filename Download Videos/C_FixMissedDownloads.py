@@ -71,7 +71,7 @@ def nameSplitter(SVName, verbose = False):
 def youtubeSongName(oneSongName):
 	"""check on youtube and get the title of the actual song name"""
 	ydl_opts = {
-		"quiet": True,
+		# "quiet": True,
 		# "outtmpl": "%(title)s.%(ext)s", #file name is song name
 		# "outtmpl": os.path.join(rootdir,"%(title)s/SV.%(ext)s"), #folder name is song name, file is SV
 		"ignoreerrors": True, #Do not stop on download errors.
@@ -373,7 +373,7 @@ def FixMissingDownloads():
 
 	for subfolderName in subfolders:
 		# go into that folder
-		os.chdir(subfolderName)
+		# os.chdir(subfolderName)
 		#find the originals needed from info json
 		problem = checkMissingSongs(subfolderName)
 		if(problem != 0):
@@ -398,6 +398,7 @@ def FixMissingDownloads():
 			#move to problematicSongVid
 			dest = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/TooLittle(DownloadProb)"
 			shutil.move(subfolderName, dest)
+	return 
 
 
 def removeFoldersWithNoOriginals():
@@ -412,8 +413,10 @@ def removeFoldersWithNoOriginals():
 			writeToErrorFile("No downloaded original : " + str(subfolderName))
 			dest = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/No_Originals"
 			shutil.move(subfolderName, dest)
+	return
 
-import librosa
+# import librosa
+from pydub import AudioSegment
 def possiblyTooLong():
 	global originalRootDir
 	originalRootDir = str(Path().absolute()) 
@@ -422,23 +425,30 @@ def possiblyTooLong():
 	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
 
 	for subfolderName in subfolders:
-		allFiles = os.listdir(subfolderPath)
+		allFiles = os.listdir(subfolderName)
 		for file in allFiles:
 			if file.endswith(".wav"):
 				#check if song is too long
-				songLength = librosa.get_duration(file)
-				if songLength > 500:
+				# songLength = librosa.get_duration(file)
+				audioFilePath = os.path.abspath(os.path.join(rootdir, subfolderName, file))
+				audio = AudioSegment.from_file(audioFilePath)
+				songLength = audio.duration_seconds
+				# print(songLength)
+				if songLength > 500 or songLength < 120:
 					writeToWarningFile("Song Might be too long : " + str(subfolderName))
 					dest = "/Users/Caffae/Documents/GitHub/SwitchingVocalsNN/Problematic_SongVids/WrongSong"
 					shutil.move(subfolderName, dest)
-
-		return count
+					break;
+	return 
 		
 
 def run():
 	FixMissingDownloads()
+	# print("Done")
 	removeFoldersWithNoOriginals()
+	# print("Done")
 	possiblyTooLong()
+	# print("Done")
 	#TODO test for similarity of song
 	
 	##### Process

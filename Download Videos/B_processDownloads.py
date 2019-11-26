@@ -10,6 +10,7 @@ from unidecode import unidecode
 import re
 from string import punctuation
 import youtube_dl
+import shutil
 
 def flatten(A):
     rt = []
@@ -66,6 +67,67 @@ def nameSplitter(SVName, verbose = False):
 
 	return songNames
 
+def offlineAlterInfoDict():
+	global originalRootDir
+	originalRootDir = str(Path().absolute()) 
+
+	rootdir = str(Path().absolute()) 
+	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
+
+	for subfolderPath in subfolders:
+		filePath = os.path.join(subfolderPath,'songsInfo.json' )
+		with open(filePath, 'r') as fp:
+			data = json.load(fp)
+
+		removedDupes = list(dict.fromkeys(data["Original Song Names"]))
+		data["Original Song Names"] = removedDupes
+
+		with open('songsInfo.json', 'w') as fp:
+			json.dump(data, fp, sort_keys=True, indent=4)
+	
+		
+
+def alterInfoDict():
+	#for each song
+	rootdir = str(Path().absolute()) 
+	subfolders = [f.path for f in os.scandir(rootdir + "/") if f.is_dir() ]    
+
+
+	for subfolderName in subfolders:
+		# delete if mashup is a lot of songs ("AND MORE") else process it
+		if " more" in subfolderName.lower() or "top" in subfolderName.lower():
+			#TODO delete that folder
+			shutil.rmtree(os.path.join(rootdir, subfolderName))
+
+		else:
+			#go into that folder
+			os.chdir(os.path.join(rootdir, subfolderName))
+			#find the original song name
+			songName = os.path.basename(subfolderName)
+			originalSongNames = list(dict.fromkeys(processSongNames(songName)))
+
+			#TODO save the name of the song to a file in the folder ALONG with SV name
+			mashupVid = False
+			if len(originalSongNames) > 1 or "mashup" in songName.lower():
+				mashupVid = True
+
+			PossibleError = False
+			if "mashup" in songName.lower() and len(originalSongNames) < 2:
+				print("Error: possibly missing song for " + songName)
+				PossibleError = True
+
+			info_dict = {
+			"Switch Vocals Vid": songName,
+			"Original Song Names": originalSongNames,
+			"Mashup": mashupVid,
+			"Error(if MashUp)": PossibleError
+			}
+
+			with open('songsInfo.json', 'w') as fp:
+			    json.dump(info_dict, fp, sort_keys=True, indent=4)
+	
+
+
 def youtubeSongName(oneSongName):
 	"""check on youtube and get the title of the actual song name"""
 	ydl_opts = {
@@ -105,42 +167,50 @@ def youtubeSongName(oneSongName):
 		if vid == None or len(vid) == 0:
 			return "Can't Find Song", []
 		else:
-			video = vid[0]
-			# print("#############")
-			# print(video)
-			# print("#############")
-			# we get back a playlist object so access title as below (alt_title sees to work better)
-			title = video.get("alt_title")
+			try:
+				video = vid[0]
+				# print("#############")
+				# print(video)
+				# print("#############")
+				# we get back a playlist object so access title as below (alt_title sees to work better)
+				title = video.get("alt_title")
 
-			if title == None or len(title) < 1:
-				title = video.get("title")
+				if title == None or len(title) < 1:
+					title = video.get("title")
 
-			if title == None or len(title) < 1:
+				if title == None or len(title) < 1:
+					return "Can't Find Song", []
+				#list of terms that should be removed from snippets list coz same song
+				otherPossibleNames = []
+
+				listOfImportantTerms = [
+				"creator",
+				"title",
+				"alt_title",
+				"track",
+				"artist", 
+				"album",
+				"tags"
+				] #TODO
+				for i in listOfImportantTerms:
+					item = video.get(i)
+
+					if item != None and len(item) > 0: #remove blanks
+						otherPossibleNames.append(item)
+
+				#flatten list 
+				otherPossibleNames = flatten(otherPossibleNames)
+
+				#make everything lower case
+				otherPossibleNames = [s.lower() for s in otherPossibleNames]
+				return title, otherPossibleNames
+			except Exception as e:
+				print(vid)
+			else:
 				return "Can't Find Song", []
-			#list of terms that should be removed from snippets list coz same song
-			otherPossibleNames = []
 
-			listOfImportantTerms = [
-			"creator",
-			"title",
-			"alt_title",
-			"track",
-			"artist", 
-			"album",
-			"tags"
-			] #TODO
-			for i in listOfImportantTerms:
-				item = video.get(i)
-				if item != None and len(item) > 0: #remove blanks
-					otherPossibleNames.append(item)
-
-
-			#flatten list 
-			otherPossibleNames = flatten(otherPossibleNames)
-
-			#make everything lower case
-			otherPossibleNames = [s.lower() for s in otherPossibleNames]
-			return title, otherPossibleNames
+			
+			
 
 
 
@@ -256,7 +326,7 @@ def processDownloads():
 		# delete if mashup is a lot of songs ("AND MORE") else process it
 		if "and more" in subfolderName.lower():
 			#TODO delete that folder
-			os.removedirs(os.path.join(rootdir, subfolderName))
+			shutil.rmtree(os.path.join(rootdir, subfolderName))
 
 		else:
 			#go into that folder
@@ -332,6 +402,7 @@ def test():
 
 def run():
 	processDownloads()
+	offlineAlterInfoDict()
 	
 	##### Process
 	#put in folder for each song
@@ -344,4 +415,6 @@ def run():
 
 if __name__ == "__main__":
     run()
+    # alterInfoDict()
+    
     
