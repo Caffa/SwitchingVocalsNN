@@ -11,6 +11,7 @@ from string import punctuation
 
 def fixName(SVName):
 	SVName = SVName.replace("✗", " _ ")
+	SVName = SVName.replace("$", "S")
 	SVName = unidecode(SVName) #better coz it brings to the closest equivalent
 	SVName = SVName.rstrip(punctuation + " ")
 	return SVName
