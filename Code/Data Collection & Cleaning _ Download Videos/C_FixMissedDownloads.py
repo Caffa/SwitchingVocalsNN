@@ -7,7 +7,6 @@ from pathlib import Path
 import json
 import os
 import string
-from pathlib import Path
 from unidecode import unidecode
 import re
 from string import punctuation
